@@ -1,3 +1,5 @@
+<svelte:options tag="server-selection" immutable={true} />
+
 <script>
   import "@material/mwc-icon";
   import "@material/mwc-icon-button";
@@ -30,7 +32,7 @@
         apiKey = key;
         if (token) {
           user = jwtdecode(token);
-          user._id = jwtdecode(token, { header: true })._id;
+          user._id = jwtdecode(token)._id;
         }
 
         fetchServers();
@@ -38,23 +40,22 @@
     });
     iframe.contentWindow.postMessage("exchange", url(""));
   }
-
+  //user._id
   //fetch servers
   function fetchServers() {
     if (token) {
       const filter = {
-        $and: [
-          { "user._id": user._id },
-          { $or: [{ status: "active" }, { status: "expired" }] },
-          { package_code: { $nin: ["on_premise"] } },
-        ],
+        "user.identity_id": user._id,
+        "server.state": 2,
+        $or: [{ status: "active" }, { status: "expired" }],
+        package_code: { $nin: ["on_premise"] },
       };
       projects = fetch(
         url(
           "/bucket/5dd912440566406ec8f0d756/data?relation=true&filter=" +
             JSON.stringify(filter)
         ),
-        { headers: { Authorization: "APIKEY " + apiKey } }
+        { headers: { Authorization: "IDENTITY " + token } }
       ).then((r) => r.json());
     } else {
       projects = undefined;
@@ -71,6 +72,63 @@
     }
   }
 </script>
+
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+/>
+<iframe
+  class="frame"
+  title="Spica HeadQuarters FIM"
+  src={url("/fn-execute/v1/state")}
+  on:load={onIframeReady}
+/>
+
+{#if token != null}
+  <h1 class="title">Select one of your Spica projects</h1>
+  <div class="page">
+    {#await projects}
+      <!-- LOAIDING -->
+      <div class="lds-ring">
+        <div />
+        <div />
+        <div />
+        <div />
+      </div>
+    {:then projects}
+      {#if !projects.length}
+        <h1 style="text-align:center;">You have no project</h1>
+      {/if}{#each projects as project}
+        <div class="card" on:click={selectProject(project)}>
+          <div class="info">
+            <span class="project-name">{project.project_name}</span>
+
+            <span class="project-id">licence id: {project.license_id}</span>
+          </div>
+
+          <div class="button-part">
+            <div class="button">
+              <span>
+                <i class="fa fa-angle-right" style="font-size:36px" />
+              </span>
+            </div>
+          </div>
+        </div>
+      {/each}
+    {:catch error}
+      {error.message}
+    {/await}
+  </div>
+{:else}
+  <h1
+    class="auth_title"
+    on:click={() =>
+      (location.href =
+        "https://dashboard.spicaengine.com/login?callback=" + location.href)}
+  >
+    Authenticate
+  </h1>
+{/if}
 
 <style>
   .title {
@@ -133,12 +191,11 @@
     margin: auto;
   }
 
-
-  .card:hover .button-part .button{
+  .card:hover .button-part .button {
     background: rgba(164, 204, 243, 0.63);
   }
 
-  .card:hover{
+  .card:hover {
     background: rgba(236, 235, 235, 0.336);
   }
 
@@ -155,6 +212,7 @@
   }
 
   .auth_title {
+    cursor: pointer;
     text-align: center;
   }
 
@@ -200,54 +258,3 @@
     }
   }
 </style>
-
-<link
-  rel="stylesheet"
-  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
-<iframe
-  class="frame"
-  title="Spica HeadQuarters FIM"
-  src={url('/fn-execute/v1/state')}
-  on:load={onIframeReady} />
-
-{#if token != null}
-  <h1 class="title">Select one of your Spica projects</h1>
-  <div class="page">
-    {#await projects}
-      <!-- LOAIDING -->
-
-      <div class="lds-ring">
-        <div />
-        <div />
-        <div />
-        <div />
-      </div>
-    {:then projects}
-      {#if !projects.length}
-        <h1>You have no project</h1>
-      {/if}
-
-      {#each projects as project}
-        <div class="card"  on:click={selectProject(project)}>
-          <div class="info">
-            <span class="project-name">{project.project_name}</span>
-
-            <span class="project-id">licence id:
-              {project.license_id}</span>
-          </div>
-
-          <div class="button-part">
-            <div class="button">
-              <span> <i class="fa fa-angle-right" style='font-size:36px'/> </span>
-            </div>
-          </div>
-        </div>
-      {/each}
-    {:catch error}
-      {error.message}
-    {/await}
-  </div>
-{:else}
-  <h1 class="auth_title">Authenticating... Please wait!</h1>
-{/if}
-<svelte:options tag="server-selection" immutable={true} />
