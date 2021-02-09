@@ -64,10 +64,12 @@
 
   function selectProject(project) {
     // console.log("selected poject: ", project);
-    dispatch("serverSelected", { _id: project._id });
+    dispatch("serverSelected", { _id: project.server._id });
     if (currentComponent.dispatchEvent) {
       currentComponent.dispatchEvent(
-        new CustomEvent("serverSelected", { detail: { _id: project._id } })
+        new CustomEvent("serverSelected", {
+          detail: { _id: project.server._id },
+        })
       );
     }
   }
